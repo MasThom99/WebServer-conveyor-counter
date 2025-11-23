@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESP8266 Batch Counter (Elegance)</title>
+    <!-- Memuat Tailwind CSS untuk styling modern -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Konfigurasi Font Global dan Variabel Warna */
+      :root {
+        --color-primary: #10b981; /* Emerald Green */
+        --color-accent: #ef4444; /* Merah untuk Aksi Reset */
+      }
+
+      body { 
+        margin: 0; 
+        font-family: 'Inter', sans-serif; 
+        background-color: #f3f4f6; /* Latar belakang soft */
+      }
+      
+      /* Styling untuk Card dan Shadow yang lebih halus */
+      .card-shadow {
+        box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.1), 0 5px 15px -5px rgba(0, 0, 0, 0.05);
+      }
+      
+      /* Styling Khusus untuk Angka Hitungan */
+      #current-count { 
+        font-size: clamp(4rem, 15vw, 6rem); /* Ukuran responsif */
+        font-weight: 800; 
+        color: var(--color-primary); 
+        text-align: center; 
+        line-height: 1; 
+        transition: color 0.3s; /* Transisi saat diperbarui */
+      }
+
+      /* Styling Khusus untuk Input dengan Efek Fokus */
+      .input-elegant {
+        padding: 12px;
+        border: 1px solid #d1d5db; /* border abu-abu terang */
+        border-radius: 8px;
+        transition: all 0.2s ease-in-out;
+      }
+      .input-elegant:focus {
+        outline: none;
+        border-color: #34d399; /* Hijau muda saat fokus */
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2); /* Ring fokus */
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      // Non-Blocking Alert Replacement: Menggunakan Modal Sederhana
+      function showMessage(message) {
+        const modalId = 'message-modal';
+        let modal = document.getElementById(modalId);
+        if (!modal) {
+          modal = document.createElement('div');
+          modal.id = modalId;
+          modal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300 opacity-0 pointer-events-none';
+          modal.innerHTML = `
+            <div class="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full transform scale-95 transition-transform duration-300">
+              <h3 class="text-xl font-bold text-gray-800 mb-4">Pesan Sistem</h3>
+              <p id="modal-message" class="text-gray-600 mb-6"></p>
+              <button onclick="closeModal()" class="w-full py-2 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 transition">Tutup</button>
+            </div>
+          `;
+          document.body.appendChild(modal);
+        }
+        document.getElementById('modal-message').innerText = message;
+        // Tampilkan modal
+        setTimeout(() => {
+          modal.classList.remove('opacity-0', 'pointer-events-none');
+          modal.querySelector('div').classList.remove('scale-95');
+        }, 10);
+      }
+
+      function closeModal() {
+        const modal = document.getElementById('message-modal');
+        if (modal) {
+          // Sembunyikan modal dengan transisi
+          modal.querySelector('div').classList.add('scale-95');
+          modal.classList.add('opacity-0');
+          setTimeout(() => {
+            modal.classList.add('pointer-events-none');
+          }, 300);
+        }
+      }
+
+      // --- Logika Koneksi dan Fungsionalitas ---
+      
+      // Dapatkan IP address ESP8266 dari host
+      let localIP = window.location.hostname;
+      // Gunakan 'ws' protocol
+      let socket = new WebSocket("ws://" + localIP + "/ws");
+
+      socket.onopen = function (e) {
+        console.log("[WS] Connection established");
+      };
+
+      // WebSocket menerima nilai hitungan baru dan memperbarui tampilan
+      socket.onmessage = function (event) {
+        console.log(`[WS] Data received: ${event.data}`);
+        const countElement = document.getElementById("current-count");
+        // Update nilai
+        countElement.innerText = event.data;
+        // Tambahkan feedback visual singkat (mis. scale/pulse)
+        countElement.classList.add('animate-pulse-once'); 
+        setTimeout(() => {
+            countElement.classList.remove('animate-pulse-once'); 
+        }, 500); 
+      };
+
+      socket.onerror = function (error) {
+        console.error(`[WS] Error: ${error.message}`);
+      };
+      
+      // Mengirim data batch ke ESP8266
+      function saveAndReset() {
+        const itemTypeInput = document.getElementById("item-type-input");
+        let itemType = itemTypeInput.value.trim();
+
+        if (itemType === "") {
+          showMessage("⚠️ Mohon masukkan Jenis Barang (Batch Name) sebelum menyimpan!");
+          return;
+        }
+
+        // Encode untuk URL, ganti spasi dengan underscore (agar aman di C++)
+        let encodedItemType = encodeURIComponent(itemType.replace(/\s/g, '_')); 
+        
+        // Kirim permintaan GET ke ESP8266 dengan data jenis barang
+        fetch(`http://${localIP}/save_batch?item_type=${encodedItemType}`)
+          .then(response => {
+            if (response.ok) {
+              showMessage(`✅ Batch "${itemType}" berhasil dikirim dan counter di-reset.`);
+              // Kosongkan input setelah berhasil dikirim
+              itemTypeInput.value = '';
+            } else {
+              showMessage("❌ Gagal mengirim perintah Save ke ESP8266. Periksa koneksi.");
+              console.error("Failed to send save command. Status:", response.status);
+            }
+          })
+          .catch(error => {
+              showMessage(`🔥 Error koneksi ke ESP8266: Pastikan perangkat aktif. Detail: ${error.message}`);
+              console.error(`Fetch Error: ${error.message}`);
+          });
+      }
+    </script>
+    
+    <!-- TAMPILAN UI BARU YANG LEBIH ELEGAN DAN RESPONSIVE -->
+    <div class="container mx-auto p-4 max-w-lg">
+      <div class="bg-white p-6 md:p-8 mt-4 sm:mt-10 rounded-xl card-shadow">
+        
+        <header class="text-center mb-8">
+          <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-800 leading-tight">
+             <span class="text-emerald-500">IoT</span> Batch Counter
+          </h1>
+          <p class="text-sm text-gray-500 mt-2">Kontrol dan Monitoring Real-time untuk Konveyor</p>
+        </header>
+        
+        <!-- DISPLAY HITUNGAN REAL-TIME -->
+        <div class="text-center bg-gray-50 border border-emerald-200 rounded-xl p-4 sm:p-6 mb-8">
+          <p class="text-sm uppercase tracking-widest text-gray-500 font-semibold">Hitungan Saat Ini</p>
+          <h1 id="current-count" class="mt-2 transition duration-300">0</h1>
+        </div>
+        
+        <div class="space-y-6">
+          <!-- Input Jenis Barang -->
+          <div>
+            <label for="item-type-input" class="block text-sm font-medium text-gray-700 mb-2">Nama Batch/Jenis Barang</label>
+            <input 
+              type="text" 
+              id="item-type-input" 
+              placeholder="Contoh: Kotak Tipe B (Produksi Malam)" 
+              class="input-elegant w-full"
+            />
+            <p class="text-xs text-gray-400 mt-1">Gunakan nama yang jelas untuk mempermudah pelacakan di database.</p>
+          </div>
+          
+          <!-- Tombol Save & Reset -->
+          <button 
+            class="w-full py-4 rounded-xl font-bold text-lg text-white bg-red-500 hover:bg-red-600 active:bg-red-700 transition duration-200 ease-in-out card-shadow transform hover:scale-[1.01] focus:outline-none focus:ring-4 focus:ring-red-300" 
+            onclick="saveAndReset()"
+          >
+            Save Batch Counter
+          </button>
+        </div>
+
+        <footer class="mt-8 pt-4 border-t border-gray-100 text-center">
+            <p class="text-xs text-gray-400">
+                Aplikasi ini berkomunikasi dengan ESP8266 melalui <span class="font-mono text-emerald-600">WebSocket</span> dan <span class="font-mono text-emerald-600">HTTP GET</span>.
+            </p>
+        </footer>
+        
+      </div>
+    </div>
+  </body>
+</html>
