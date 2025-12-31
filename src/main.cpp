@@ -17,8 +17,8 @@
 
 // --- KONFIGURASI JARINGAN & BACKEND ---
 // Ganti sesuai WiFi Anda
-const char *ssid = "Ridho Wifi 4G";
-const char *password = "20122016";
+const char *ssid = "OPPO A78";
+const char *password = "kagakahmales";
 
 // Node.js Backend (MySQL Middleware)
 // >>> PENTING: GANTI DENGAN IP LOKAL KOMPUTER ANDA!!! <<<
@@ -29,16 +29,6 @@ const int backendPort = 8080;
 const char* tsServerName = "api.thingspeak.com";
 String tsApiKey = "DOGPVA4WIGD2J634"; // GANTI DENGAN API KEY THINGSPEAK ANDA
 // ----------------------------------------
-
-// // --- KONFIGURASI TELEGRAM ---
-// // ⚠️ GANTI DENGAN TOKEN BOT ANDA ⚠️
-// #define TELEGRAM_BOT_TOKEN "8545967610:AAGiTS0wAgkRt12PlqC7UlkLsAuGTeKopAU"
-// // ⚠️ GANTI DENGAN ID CHAT ANDA ⚠️
-// #define TELEGRAM_CHAT_ID "7460591519"
-// const int TELEGRAM_THRESHOLD = 50; // Notifikasi setiap kelipatan 50
-// // ----------------------------
-// const char TELEGRAM_FINGERPRINT[] PROGMEM = "A2 0C 47 C4 72 3E D4 C9 6E 71 88 56 16 B6 B5 48 B8 53 C1 75"; 
-// // ------------------------------------
 
 
 
@@ -68,86 +58,7 @@ long lastTriggered = 0;
 const long WAIT_FOR_NEXT_TRIGGER = 1000; // Debounce sensor IR
 // --------------------------------------------------
 
-// // --- FUNGSI TELEGRAM: MENGIRIM PESAN ---
-// // --- FUNGSI TELEGRAM: MENGIRIM PESAN (PERBAIKAN FINAL) ---
-// void sendTelegramMessage(const String& message) {
-//     if (WiFi.status() != WL_CONNECTED) {
-//         Serial.println("Telegram: WiFi tidak terhubung.");
-//         return;
-//     }
-    
-//     // URL Encoding (mengganti spasi dengan %20)
-//     String encodedMessage = "";
-//     for (int i = 0; i < message.length(); i++) {
-//         char c = message.charAt(i);
-//         if (c == ' ') {
-//             encodedMessage += "%20";
-//         } else {
-//             encodedMessage += c;
-//         }
-//     }
-    
-//     const char* telegramHost = "api.telegram.org";
-//     WiFiClientSecure telClient;
 
-//     telClient.setFingerprint(TELEGRAM_FINGERPRINT); 
-
-//     if (telClient.connect(telegramHost, 443)) { 
-//         Serial.println("Telegram: Koneksi API OK via HTTPS. Mengirim pesan...");
-        
-//         // --- MEMBANGUN STRING REQUEST HTTP GET ---
-//         String request = "GET /bot";
-//         request += TELEGRAM_BOT_TOKEN;
-//         request += "/sendMessage?chat_id=";
-//         request += TELEGRAM_CHAT_ID;
-//         request += "&text=";
-//         request += encodedMessage;
-//         request += " HTTP/1.1";
-
-//         // Mengirim request dan headers
-//         telClient.println(request); // Kirim baris permintaan GET LENGKAP
-//         telClient.println("Host: api.telegram.org");
-//         telClient.println("Connection: close");
-//         telClient.println(); // BARIS KOSONG WAJIB: Menandai akhir header
-
-//         // --- PEMBACAAN RESPON ---
-//         unsigned long timeout = millis();
-//         String response = "";
-        
-//         // Tunggu respons atau timeout
-//         while (telClient.available() == 0) {
-//             if (millis() - timeout > 5000) {
-//                 Serial.println(">>> Telegram Server Timeout!");
-//                 telClient.stop();
-//                 return;
-//             }
-//         }
-        
-//         // Baca semua respons dari server
-//         while(telClient.available()){
-//             response += telClient.readStringUntil('\n');
-//         }
-//         telClient.stop();
-        
-//         // Print hasil
-//         Serial.print("Telegram Response:\n");
-//         Serial.println(response);
-//         Serial.println("\n---");
-
-//         // Analisis status (untuk debugging)
-//         if (response.startsWith("HTTP/1.1 200 OK")) {
-//              Serial.println("✅ Notifikasi Telegram BERHASIL dikirim!");
-//         } else {
-//              Serial.println("❌ Notifikasi Telegram GAGAL. Cek Token/ID Chat atau Log Respons.");
-//         }
-//         // -------------------------
-
-//     } else {
-//         Serial.println("Koneksi ke Telegram API gagal! (Cek Fingerprint/Koneksi/Firewall)");
-//     }
-// }
-// -----------------------------------------------------
-// ---------------------------------------
 
 void notFound(AsyncWebServerRequest *request)
 {
@@ -258,13 +169,7 @@ void setup()
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
     { request->send(LittleFS, "/index.html", String(), false, indexPageProcessor); });
 
-    // server.on("/index.css", HTTP_GET, [](AsyncWebServerRequest *request)
-    // { request->send(LittleFS, "/index.css", "text/css"); });
-
-    // server.on("/entireframework.min.css", HTTP_GET, [](AsyncWebServerRequest *request)
-    // { request->send(LittleFS, "/entireframework.min.css", "text/css"); });
-
-
+    
     // --- ROUTE: SAVE BATCH & RESET (Dipanggil dari Web) ---
     server.on("/save_batch", HTTP_GET, [](AsyncWebServerRequest *request)
     { 
@@ -282,11 +187,6 @@ void setup()
         // Reset counter
         counter = 0; 
 
-        // // --- LOGIKA TELEGRAM: RESET KONFIRMASI ---
-        // String resetMsg = "✅ BATCH TERSIMPAN: " + String(countToSave) + 
-        //                   " item (" + itemType + ") telah disimpan ke DB dan penghitung di-reset.";
-        // sendTelegramMessage(resetMsg);
-        // // -----------------------------------------
         
         // Update Web Clients via WebSocket
         ws.printfAll("0"); 
@@ -328,14 +228,6 @@ void loop()
             isTriggered = true;
             counter++;
             digitalWrite(LED, LOW);
-
-            // // --- LOGIKA TELEGRAM: KELIPATAN 50 ---
-            // // Cek jika counter mencapai kelipatan yang ditentukan (mis. 50, 100, 150, dst.)
-            // if (counter > 0 && (counter % TELEGRAM_THRESHOLD) == 0) {
-            //     String msg = "🎉 BATAS KELIPATAN TERCAPAI: Hitungan saat ini mencapai " + String(counter) + "!";
-            //     sendTelegramMessage(msg);
-            // }
-            // ------------------------------------
             
             // --- UPDATE REAL-TIME ---
             Serial.printf("counter :: %u\n", counter);
